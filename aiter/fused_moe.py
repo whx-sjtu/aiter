@@ -151,6 +151,12 @@ def _aux_uses_opus(output_aux, block_size, routed_rows=None, num_experts=None):
 _ACT_TYPE_DISABLED_KEY = "__ignore__"
 _SWIGLU_MXFP4_BF16_BOUND = int(os.environ.get("GPTOSS_SWIGLU_MXFP4_BF16_BOUND", "256"))
 _MOE_A8W4_BYPASS_QUANT = os.environ.get("AITER_MOE_A8W4_BYPASS_QUANT", "0") == "1"
+# A row-strided 16-bit activation (a column slice of a wider GEMM output) goes
+# to the MXFP4 per-1x32 quant as it is, instead of as a dense copy, when that
+# quant is its only reader. The quant takes the row stride: same kernel, same bits.
+_MOE_ROW_STRIDED_QUANT_INPUT = (
+    os.environ.get("AITER_MOE_ROW_STRIDED_QUANT_INPUT", "0") == "1"
+)
 # (num_experts, topk) pairs the HIP kernel is instantiated for; must stay in
 # sync with AITER_MXFP4_SORT_QUANT_ROUTES in moe_sorting_opus_kernels.cu.
 _FUSED_DECODE_SORT_QUANT_ROUTES = {(512, 10), (513, 11)}
@@ -507,6 +513,21 @@ def _is_row_major_2d(tensor):
                 and tensor.stride(0) * tensor.element_size() % 16 == 0
             )
         )
+    )
+
+
+def _row_strided_quant_input(hidden_states, quant_type, q_dtype_a) -> bool:
+    """Whether a non-dense `hidden_states` may skip its copy: only an MXFP4
+    per-1x32 quant of 16-bit rows can read it. Each reader re-checks its own
+    branch and copies when it is not that quant. Rows up to the fused decode
+    sort+quant's bound keep the copy, so that gate sees what it always did."""
+    return (
+        _MOE_ROW_STRIDED_QUANT_INPUT
+        and quant_type == QuantType.per_1x32
+        and q_dtype_a == dtypes.fp4x2
+        and hidden_states.dtype in (dtypes.bf16, dtypes.fp16)
+        and hidden_states.shape[0] > _FUSED_DECODE_SORT_QUANT_MAX_M
+        and _is_row_major_2d(hidden_states)
     )
 
 
@@ -2277,8 +2298,12 @@ def _fused_moe_impl(
             )
             metadata = _resolve_metadata(disable_inline_sort=True)
             use_inline_sort = False
+    # `strided_rows`: the copy is left to the readers that are not the quant.
+    strided_rows = False
     if not use_inline_sort and not hidden_states.is_contiguous():
-        hidden_states = hidden_states.contiguous()
+        strided_rows = _row_strided_quant_input(hidden_states, quant_type, q_dtype_a)
+        if not strided_rows:
+            hidden_states = hidden_states.contiguous()
 
     stage2_func = getattr(metadata.stage2, "func", metadata.stage2)
     if (
@@ -2329,7 +2354,9 @@ def _fused_moe_impl(
     if metadata.full_impl is not None:
         full_output = metadata.full_impl(
             FusedMoeRequest(
-                hidden_states=hidden_states,
+                hidden_states=(
+                    hidden_states.contiguous() if strided_rows else hidden_states
+                ),
                 w1=w1,
                 w2=w2,
                 topk_weight=topk_weight,
@@ -2618,6 +2645,14 @@ def _fused_moe_impl(
                 f"1-stage MoE cannot apply swiglu_limit={swiglu_limit!r}; "
                 "the selected kernel has no clamp."
             )
+        stage1_kw = getattr(metadata.stage1, "keywords", {})
+        if strided_rows and not (
+            # fused_moe_1stage's per-1x32 quant branch.
+            stage1_func is fused_moe_1stage
+            and stage1_kw.get("quant_type") == QuantType.per_1x32
+            and not stage1_kw.get("xbf16", False)
+        ):
+            hidden_states = hidden_states.contiguous()
         _stage1_call = functools.partial(
             metadata.stage1,
             hidden_states,
@@ -2697,6 +2732,7 @@ def _fused_moe_impl(
             routing_num_experts=global_E,
             prequantized_a1=prequantized_a1,
             prequantized_a1_scale=prequantized_a1_scale,
+            _row_strided_input=strided_rows,
         )
         return _return_output(ret, output)
 
@@ -6802,6 +6838,8 @@ def fused_moe_2stages(
     prequantized_a1: torch.Tensor | None = None,
     prequantized_a1_scale: torch.Tensor | None = None,
     deterministic: bool = False,
+    # fused_moe_ left `hidden_states` row-strided (`_row_strided_quant_input`).
+    _row_strided_input: bool = False,
 ):
     quant_func = get_quant(quant_type)
     gate_mode = GateMode(gate_mode)
@@ -6870,6 +6908,19 @@ def fused_moe_2stages(
         # Main's fused prequant already writes the E8M0 scale layout consumed by
         # replacement GEMM1 on the default Opus auxiliary path.
         metadata = replace(metadata, prequant=True)
+    if _row_strided_input and not (
+        # The fused_dynamic_mxfp4_quant_moe_sort branch below, past the row
+        # count where it runs the fused kernel instead of the per-1x32 quant.
+        prequantized_a1 is None
+        and metadata.prequant
+        and quant_type == QuantType.per_1x32
+        and dtype in (dtypes.bf16, dtypes.fp16)
+        and w1.dtype == dtypes.fp4x2
+        and q_dtype_a == dtypes.fp4x2
+        and not (metadata.ksplit > 1 and is_shuffled)
+        and token_num > 8 * 256 / topk
+    ):
+        hidden_states = hidden_states.contiguous()
     if prequantized_a1 is not None:
         if quant_type != QuantType.per_1x32:
             raise ValueError(
