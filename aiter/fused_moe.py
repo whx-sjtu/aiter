@@ -155,7 +155,7 @@ _MOE_A8W4_BYPASS_QUANT = os.environ.get("AITER_MOE_A8W4_BYPASS_QUANT", "0") == "
 # to the MXFP4 per-1x32 quant as it is, instead of as a dense copy, when that
 # quant is its only reader. The quant takes the row stride: same kernel, same bits.
 _MOE_ROW_STRIDED_QUANT_INPUT = (
-    os.environ.get("AITER_MOE_ROW_STRIDED_QUANT_INPUT", "0") == "1"
+    os.environ.get("AITER_MOE_ROW_STRIDED_QUANT_INPUT", "1") == "1"
 )
 # (num_experts, topk) pairs the HIP kernel is instantiated for; must stay in
 # sync with AITER_MXFP4_SORT_QUANT_ROUTES in moe_sorting_opus_kernels.cu.
