@@ -1,0 +1,5 @@
+gfx,cu_num,M,N,K,bias,dtype,outdtype,scaleAB,bpreshuffle,libtype,solidx,splitK,us,kernelName,err_ratio,tflops,bw
+gfx950,256,60,4096,1536,False,torch.bfloat16,torch.bfloat16,False,False,flydsl,0,0,6.314,flydsl_hgemm_abf16_wbf16_bf16_t32x32x64x7_ks1_w1x2x1_bias0_ktail0_gm0_pft_gfx950,0.0,119.57,2099.9
+gfx950,256,16384,7168,768,False,torch.bfloat16,torch.bfloat16,False,False,hipblaslt,441460,0,155.161,,0.0,1162.59,1746.94
+gfx950,256,16384,7168,1536,False,torch.bfloat16,torch.bfloat16,False,False,hipblaslt,441460,0,269.643,,0.0,1337.98,1139.41
+gfx950,256,16384,7168,4224,False,torch.bfloat16,torch.bfloat16,False,False,torch,0,0,648.047,native,0.0,1530.97,669.47
