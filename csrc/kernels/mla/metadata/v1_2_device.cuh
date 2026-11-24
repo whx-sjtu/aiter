@@ -1513,9 +1513,10 @@ void get_mla_metadata_v1_2_device(const aiter_tensor_t& seqlens_qo_indptr, // [b
                                 ((xcd_rows_per_lane % max_seqlen_qo) == 0);
     params.xcd_lane_works =
         natively_supported && xcd_multi_tile && (topk < 0) && (params.num_xcd > 1);
-    // Read per call, like the planner's other switches. Off by default.
+    // Read per call, like the planner's other switches. On by default; 0 keeps
+    // the budget's cut.
     const char* wave_cap_env = std::getenv("AITER_MLA_XCD_WAVE_CAP");
-    params.xcd_wave_cap      = (wave_cap_env != nullptr) && (std::atoi(wave_cap_env) != 0);
+    params.xcd_wave_cap      = (wave_cap_env == nullptr) || (std::atoi(wave_cap_env) != 0);
 
     // launch kernel
     MLA_METADATA_DISPATCHER(
