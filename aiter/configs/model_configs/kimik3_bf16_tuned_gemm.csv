@@ -1069,7 +1069,10 @@ gfx950,256,252,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,asm,0,1,
 gfx950,256,256,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,asm,0,1,6.823689,_ZN5aiter42bf16gemm_fp32bf16_tn_64x64_bshuffle_splitkE,,472.065075,2266.588497
 gfx950,256,512,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,asm,0,1,11.020990,_ZN5aiter43bf16gemm_fp32bf16_tn_128x64_bshuffle_splitkE,,584.561928,1665.012002
 gfx950,256,1024,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,flydsl,0,1,17.034829,flydsl_hgemm_abf16_wbf16_bf16_t128x128x64x3_ks1_w4x4x1_bias0_ktail0_gm0_pft_gfx950,,756.385764,1415.761114
-gfx950,256,2048,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,flydsl,0,1,27.963594,flydsl_hgemm_abf16_wbf16_bf16_t128x128x64x2_ks1_w2x2x1_bias0_ktail0_gm0_pft_gfx950,,921.548358,1274.928556
+gfx950,256,1280,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,flydsl,0,1,25.524000,flydsl_hgemm_abf16_wbf16_bf16_t96x128x64x2_ks1_w2x2x1_bias0_ktail0_gm4_pft_gfx950,0.0,631.018937,1057.860523
+gfx950,256,1536,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,flydsl,0,1,27.279000,flydsl_hgemm_abf16_wbf16_bf16_t256x128x64x3_ks1_w4x4x1_bias0_ktail0_gm0_pft_gfx950,0.0,708.506647,1095.509953
+gfx950,256,1792,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,flydsl,0,1,28.448000,flydsl_hgemm_abf16_wbf16_bf16_t256x128x64x3_ks1_w4x4x1_bias0_ktail0_gm0_pft_gfx950,0.0,792.624378,1151.856018
+gfx950,256,2048,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,flydsl,0,1,30.342000,flydsl_hgemm_abf16_wbf16_bf16_t256x128x64x3_ks1_w4x4x1_bias0_ktail0_gm4_pft_gfx950,0.0,849.311310,1174.991233
 gfx950,256,4096,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,asm,0,1,40.349007,_ZN5aiter36bf16gemm_bf16_tn_256x256_bpreshuffleE,,1277.345140,1455.308590
 gfx950,256,8192,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,asm,0,1,79.687808,_ZN5aiter36bf16gemm_bf16_tn_256x256_bpreshuffleE,,1293.538097,1315.854997
 gfx950,256,10240,4096,1536,False,torch.bfloat16,torch.bfloat16,False,True,asm,0,1,108.353518,_ZN5aiter36bf16gemm_bf16_tn_256x256_bpreshuffleE,0.0,1189.153996,1180.637919
