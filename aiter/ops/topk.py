@@ -925,6 +925,7 @@ def _top_k_per_row_prefill_sampled(
     workspace: torch.Tensor | None = None,
     ragged: bool = True,
     nan_high: bool = False,
+    tie_low: bool = False,
 ) -> None: ...
 
 
@@ -1052,6 +1053,7 @@ def _sampled_run(
     workspace: torch.Tensor | None,
     ragged: bool,
     nan_high: bool,
+    tie_low: bool = False,
 ) -> None:
     """The sampled launch on arguments already validated."""
     if workspace is None:
@@ -1076,6 +1078,7 @@ def _sampled_run(
         workspace,
         ragged,
         nan_high,
+        tie_low,
     )
 
 
@@ -1101,6 +1104,11 @@ def top_k_per_row_prefill_sampled(
     # as top_k_per_row_prefill's other paths do. True ranks every NaN above
     # +inf, topk_select's contract. Indices only: values must be None.
     nan_high: bool = False,
+    # Ties at the k-th score to the smallest columns: the set
+    # top_k_per_row_decode(stable=True) keeps, in no promised order. Indices
+    # only, NaN by sign; not served on the small-width path, which can take a
+    # stride0 up to 16384.
+    tie_low: bool = False,
 ) -> None:
     """Per-row top-k (prefill) via the sampled kernels.
 
@@ -1166,6 +1174,11 @@ def top_k_per_row_prefill_sampled(
             "top_k_per_row_prefill_sampled: nan_high selects indices only; "
             "pass values=None"
         )
+    if tie_low and (nan_high or values is not None):
+        raise ValueError(
+            "top_k_per_row_prefill_sampled: tie_low selects indices only, NaN by "
+            "sign; pass values=None and nan_high=False"
+        )
     if workspace is not None:
         size = _sampled_workspace_size_cached(numRows, stride0, k)
         if workspace.device != logits.device or not workspace.is_contiguous():
@@ -1198,6 +1211,7 @@ def top_k_per_row_prefill_sampled(
         workspace,
         ragged,
         nan_high,
+        tie_low,
     )
 
 
