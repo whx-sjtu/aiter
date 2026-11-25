@@ -2188,7 +2188,7 @@ def _fused_moe_impl(
 
     def _resolve_metadata(disable_inline_sort=False, exclude_mxmoe=False):
         metadata = get_2stage_cfgs(
-            get_padded_M(config_M),
+            _tuned_M(config_M),
             model_dim,
             inter_dim,
             E,
@@ -3474,6 +3474,11 @@ def nextPow2(n):
 
 
 _PADDED_M_TIERS = [32768, 131072]
+# Extra tuned-row tiers ("3072"): M in (p / 2, T] for a listed T below its power of two p looks
+# up the row tuned at token = T, which must exist. Empty: off.
+_EXTRA_M_TIERS = tuple(
+    sorted(int(t) for t in os.environ.get("AITER_MOE_EXTRA_M_TIERS", "").split(",") if t.strip())
+)
 
 
 def get_padded_M(M):
@@ -3489,6 +3494,14 @@ def get_padded_M(M):
         if M >= tier:
             return tier
     return _PADDED_M_TIERS[0]
+
+
+def _tuned_M(M):
+    padded = get_padded_M(M)
+    for tier in _EXTRA_M_TIERS:
+        if M <= tier < padded and tier > padded // 2:
+            return tier
+    return padded
 
 
 @dataclass
@@ -6867,7 +6880,7 @@ def fused_moe_2stages(
         _normalize_mxfp4_activation_params(activation, beta, linear_beta, swiglu_limit)
     )
     metadata = get_2stage_cfgs(
-        get_padded_M(token_num),  # consider token_num > 1024 as prefill
+        _tuned_M(token_num),  # consider token_num > 1024 as prefill
         model_dim,
         inter_dim,
         E,
