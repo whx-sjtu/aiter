@@ -12,7 +12,7 @@ from aiter.ops.flydsl.mxfp4_kname import MXFP4_G1_VARIANTS
 
 # SiTUv2 with beta 4 runs the shared-exponential epilogue (act "situv2f"):
 # 3 transcendentals per output instead of 6, small numeric change.
-_SITUV2_FAST = os.environ.get("AITER_MOE_SITUV2_FAST", "0") == "1"
+_SITUV2_FAST = os.environ.get("AITER_MOE_SITUV2_FAST", "1") == "1"  # on by default (K3.1 INT5 b)
 
 
 @functools.cache
