@@ -106,8 +106,8 @@ _USE_FLYDSL_MOE_SORTING = os.environ.get("AITER_USE_FLYDSL_MOE_SORTING", "0") ==
 _MOE_SORT_BACKEND = os.environ.get("AITER_MOE_SORT_BACKEND", "auto").lower()
 # Opus multi-phase sort (>= 2048 tokens) with its expert-scatter phase split by
 # token chunk (dispatch_policy 3): same outputs byte for byte, no single CTA
-# walking a hot expert's routes. Off by default.
-_MOE_SORT_P23_SPLIT = os.environ.get("AITER_MOE_SORT_P23_SPLIT", "0") == "1"
+# walking a hot expert's routes. On by default (K3.1 INT5); 0 keeps policy 0.
+_MOE_SORT_P23_SPLIT = os.environ.get("AITER_MOE_SORT_P23_SPLIT", "1") == "1"
 
 AUX_SORT_OPUS = "opus"
 
@@ -3475,9 +3475,9 @@ def nextPow2(n):
 
 _PADDED_M_TIERS = [32768, 131072]
 # Extra tuned-row tiers ("3072"): M in (p / 2, T] for a listed T below its power of two p looks
-# up the row tuned at token = T, which must exist. Empty: off.
+# up the row tuned at token = T, which must exist. Empty: off. "3584" by default (K3.1 INT5).
 _EXTRA_M_TIERS = tuple(
-    sorted(int(t) for t in os.environ.get("AITER_MOE_EXTRA_M_TIERS", "").split(",") if t.strip())
+    sorted(int(t) for t in os.environ.get("AITER_MOE_EXTRA_M_TIERS", "3584").split(",") if t.strip())
 )
 
 
